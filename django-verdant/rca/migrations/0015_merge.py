@@ -9,6 +9,7 @@ class Migration(migrations.Migration):
     dependencies = [
         ('rca', '0013_auto_20151012_1411'),
         ('rca', '0014_merge'),
+        ('rca', '0014_auto_20151013_1434'),
     ]
 
     operations = [

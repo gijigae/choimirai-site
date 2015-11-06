@@ -35,6 +35,7 @@ from wagtail.wagtailsnippets.models import register_snippet
 from wagtail.wagtailsearch import index
 
 from modelcluster.contrib.taggit import ClusterTaggableManager
+from modelcluster.models import ClusterableModel
 from taggit.models import TaggedItemBase, Tag
 
 from donations.forms import DonationForm
@@ -324,8 +325,9 @@ ALL_PROGRAMMES = tuple(sorted([
 ], key=lambda programme: programme[0]))  # ALL_PROGRAMMES needs to be in alphabetical order (#504 Issue 1)
 
 
-# N.B. here the years refer to the end date of the academic year, e.g. 2016 stands for 2015/16
-# But in PROGRAMME_CHOICES we use academic years as keys: 2015/16 instead of 2016.
+# TODO: we should use academic years as keys, e.g. 2015/16 instead of 2016,
+# Currently 2016 refers to the academic year ending in 2016: https://torchbox.codebasehq.com/projects/rca-django-cms-project/tickets/748#update-27575600
+# See also: student_profiles.forms.PROGRAMME_CHOICES_2015
 SCHOOL_PROGRAMME_MAP = {
     '2016': {
         'schoolofarchitecture': ['architecture', 'interiordesign'],
@@ -634,7 +636,7 @@ class CustomContentModuleBlock(Orderable):
         FieldPanel('text')
     ]
 
-class CustomContentModule(models.Model):
+class CustomContentModule(ClusterableModel):
     title = models.CharField(max_length=255, help_text=help_text('rca.CustomContentModule', 'title'))
 
     def __unicode__(self):
@@ -687,7 +689,7 @@ class ContactSnippetEmail(Orderable):
         FieldPanel('email_address')
     ]
 
-class ContactSnippet(models.Model):
+class ContactSnippet(ClusterableModel):
     title = models.CharField(max_length=255, help_text=help_text('rca.ContactSnippet', 'title', default="This is the reference name for the contact. This is not displayed on the frontend."))
     contact_title = models.CharField(max_length=255, blank=True, help_text=help_text('rca.ContactSnippet', 'contact_title', default="This is the optional title, displayed on the frontend"))
     contact_address = models.TextField(blank=True, help_text=help_text('rca.ContactSnippet', 'contact_address'))
