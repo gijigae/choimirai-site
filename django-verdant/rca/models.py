@@ -5,6 +5,7 @@ import random
 
 from itertools import chain
 
+from django import forms
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.conf import settings
 from django.contrib import messages
@@ -22,13 +23,18 @@ from django.utils import timezone
 from django.views.decorators.vary import vary_on_headers
 
 from wagtail.wagtailcore.models import Page, Orderable
-from wagtail.wagtailcore.fields import RichTextField
+from wagtail.wagtailcore.fields import RichTextField, StreamField
+from wagtail.wagtailcore.blocks import ChooserBlock, StructBlock, ListBlock, \
+    StreamBlock, FieldBlock, CharBlock, RichTextBlock, PageChooserBlock, RawHTMLBlock
 from wagtail.wagtailcore.url_routing import RouteResult
 from modelcluster.fields import ParentalKey
 
-from wagtail.wagtailadmin.edit_handlers import FieldPanel, MultiFieldPanel, InlinePanel, PageChooserPanel, PublishingPanel
+from wagtail.wagtailadmin.edit_handlers import FieldPanel, MultiFieldPanel, InlinePanel, \
+    StreamFieldPanel, PageChooserPanel, PublishingPanel
 from wagtail.wagtailimages.edit_handlers import ImageChooserPanel
 from wagtail.wagtailimages.models import Image, AbstractImage, AbstractRendition
+from wagtail.wagtailimages.blocks import ImageChooserBlock
+from wagtail.wagtailembeds.blocks import EmbedBlock
 from wagtail.wagtaildocs.edit_handlers import DocumentChooserPanel
 from wagtail.wagtailsnippets.edit_handlers import SnippetChooserPanel
 from wagtail.wagtailsnippets.models import register_snippet
@@ -47,10 +53,80 @@ from rca.filters import run_filters, run_filters_q, combine_filters, get_filters
 import json
 
 from rca_signage.constants import SCREEN_CHOICES
-from reachout_choices import REACHOUT_PROJECT_CHOICES, REACHOUT_PARTICIPANTS_CHOICES, REACHOUT_THEMES_CHOICES, REACHOUT_PARTNERSHIPS_CHOICES
+from reachout_choices import REACHOUT_PROJECT_CHOICES, REACHOUT_PARTICIPANTS_CHOICES, \
+    REACHOUT_THEMES_CHOICES, REACHOUT_PARTNERSHIPS_CHOICES
 
 from .help_text import help_text
 
+
+### Streamfield blocks and config ###
+
+class ImageFormatChoiceBlock(FieldBlock):
+    field = forms.ChoiceField(choices=(
+        ('left','Wrap left'),
+        ('right','Wrap right'),
+        ('half','Half width'),
+        ('full','Full width'),
+    ))
+
+
+class ImageBlock(StructBlock):
+    image = ImageChooserBlock()
+    alignment = ImageFormatChoiceBlock()
+    caption = CharBlock()
+    attribution = CharBlock(required=False)
+
+    class Meta:
+        icon = "image"
+
+
+class PhotoGridBlock(StructBlock):
+    images = ListBlock(ImageChooserBlock())
+
+    class Meta:
+        icon = "grip"
+
+
+class PullQuoteBlock(StructBlock):
+    quote = CharBlock(classname="quote title")
+    attribution = CharBlock()
+
+    class Meta:
+        icon = "openquote"
+
+
+class PullQuoteImageBlock(StructBlock):
+    quote = CharBlock()
+    attribution = CharBlock()
+    image = ImageChooserBlock(required=False)
+
+
+class BustoutBlock(StructBlock):
+    image = ImageChooserBlock()
+    text = RichTextBlock()
+
+    class Meta:
+        icon = "pick"
+
+
+class StatsBlock(StructBlock):
+    pass
+
+    class Meta:
+        icon = "order"
+
+
+class StoryBlock(StreamBlock):
+    h2 = CharBlock(icon="title", classname="title")
+    h3 = CharBlock(icon="title", classname="title")
+    h4 = CharBlock(icon="title", classname="title")
+    intro = RichTextBlock(icon="pilcrow")
+    paragraph = RichTextBlock(icon="pilcrow")
+    aligned_image = ImageBlock(label="Aligned image")
+    bustout = BustoutBlock()
+    pullquote = PullQuoteBlock()
+    raw_html = RawHTMLBlock(label='Raw HTML', icon="code")
+    embed = EmbedBlock(icon="code")
 
 # RCA defines its own custom image class to replace wagtailimages.Image,
 # providing various additional data fields
@@ -620,37 +696,37 @@ class AdvertPlacement(models.Model):
     advert = models.ForeignKey('rca.Advert', related_name='+', help_text=help_text('rca.AdvertPlacement', 'advert'))
 
 # == Snippet: Custom Content Module ==
-
-class CustomContentModuleBlock(Orderable):
-    content_module = ParentalKey('rca.CustomContentModule', related_name='blocks')
-    link = models.ForeignKey(Page, null=True, blank=True, on_delete=models.SET_NULL, related_name='+', help_text=help_text('rca.CustomContentModuleBlock', 'link'))
-    item_title = models.CharField(max_length=255, help_text=help_text('rca.CustomContentModuleBlock', 'item_title'))
-    image = models.ForeignKey('rca.RcaImage', null=True, blank=True, on_delete=models.SET_NULL, related_name='+', help_text=help_text('rca.CustomContentModuleBlock', 'image', default="The image for the module block"))
-    text = models.CharField(max_length=255, blank=True, help_text=help_text('rca.CustomContentModuleBlock', 'text'))
-
-    panels = [
-        PageChooserPanel('link'),
-        FieldPanel('item_title'),
-        ImageChooserPanel('image'),
-        FieldPanel('text')
-    ]
-
-class CustomContentModule(models.Model):
-    title = models.CharField(max_length=255, help_text=help_text('rca.CustomContentModule', 'title'))
-
-    def __unicode__(self):
-        return self.title
-
-CustomContentModule.panels = [
-    FieldPanel('title'),
-    InlinePanel('blocks', label=""),
-]
-
-register_snippet(CustomContentModule)
-
-class CustomeContentModulePlacement(models.Model):
-    page = ParentalKey(Page, related_name='custom_content_module_placements')
-    custom_content_module = models.ForeignKey('rca.CustomContentModule', related_name='+', help_text=help_text('rca.CustomeContentModulePlacement', 'custom_content_module'))
+#
+# class CustomContentModuleBlock(Orderable):
+#     content_module = ParentalKey('rca.CustomContentModule', related_name='blocks')
+#     link = models.ForeignKey(Page, null=True, blank=True, on_delete=models.SET_NULL, related_name='+', help_text=help_text('rca.CustomContentModuleBlock', 'link'))
+#     item_title = models.CharField(max_length=255, help_text=help_text('rca.CustomContentModuleBlock', 'item_title'))
+#     image = models.ForeignKey('rca.RcaImage', null=True, blank=True, on_delete=models.SET_NULL, related_name='+', help_text=help_text('rca.CustomContentModuleBlock', 'image', default="The image for the module block"))
+#     text = models.CharField(max_length=255, blank=True, help_text=help_text('rca.CustomContentModuleBlock', 'text'))
+#
+#     panels = [
+#         PageChooserPanel('link'),
+#         FieldPanel('item_title'),
+#         ImageChooserPanel('image'),
+#         FieldPanel('text')
+#     ]
+#
+# class CustomContentModule(models.Model):
+#     title = models.CharField(max_length=255, help_text=help_text('rca.CustomContentModule', 'title'))
+#
+#     def __unicode__(self):
+#         return self.title
+#
+# CustomContentModule.panels = [
+#     FieldPanel('title'),
+#     InlinePanel('blocks', label=""),
+# ]
+#
+# register_snippet(CustomContentModule)
+#
+# class CustomeContentModulePlacement(models.Model):
+#     page = ParentalKey(Page, related_name='custom_content_module_placements')
+#     custom_content_module = models.ForeignKey('rca.CustomContentModule', related_name='+', help_text=help_text('rca.CustomeContentModulePlacement', 'custom_content_module'))
 
 # == Snippet: Reusable rich text field ==
 class ReusableTextSnippet(models.Model):
@@ -672,48 +748,48 @@ class ReusableTextSnippetPlacement(models.Model):
 
 # == Snippet: Contacts ==
 
-class ContactSnippetPhone(Orderable):
-    page = ParentalKey('rca.ContactSnippet', related_name='contact_phone')
-    phone_number = models.CharField(max_length=255, help_text=help_text('rca.ContactSnippetPhone', 'phone_number'))
-
-    panels = [
-        FieldPanel('phone_number')
-    ]
-
-class ContactSnippetEmail(Orderable):
-    page = ParentalKey('rca.ContactSnippet', related_name='contact_email')
-    email_address = models.CharField(max_length=255, help_text=help_text('rca.ContactSnippetEmail', 'email_address'))
-
-    panels = [
-        FieldPanel('email_address')
-    ]
-
-class ContactSnippet(models.Model):
-    title = models.CharField(max_length=255, help_text=help_text('rca.ContactSnippet', 'title', default="This is the reference name for the contact. This is not displayed on the frontend."))
-    contact_title = models.CharField(max_length=255, blank=True, help_text=help_text('rca.ContactSnippet', 'contact_title', default="This is the optional title, displayed on the frontend"))
-    contact_address = models.TextField(blank=True, help_text=help_text('rca.ContactSnippet', 'contact_address'))
-    contact_link = models.URLField(blank=True, help_text=help_text('rca.ContactSnippet', 'contact_link'))
-    contact_link_text = models.CharField(max_length=255, blank=True, help_text=help_text('rca.ContactSnippet', 'contact_link_text'))
-
-    def __unicode__(self):
-        return self.title
-
-ContactSnippet.panels = [
-    FieldPanel('title'),
-    FieldPanel('contact_title'),
-    FieldPanel('contact_address'),
-    FieldPanel('contact_link'),
-    FieldPanel('contact_link_text'),
-    InlinePanel('contact_email', label="Contact phone numbers/emails"),
-    InlinePanel('contact_phone', label="Contact phone number"),
-]
-
-
-register_snippet(ContactSnippet)
-
-class ContactSnippetPlacement(models.Model):
-    page = ParentalKey(Page, related_name='contact_snippet_placements')
-    contact_snippet = models.ForeignKey('rca.ContactSnippet', related_name='+', help_text=help_text('rca.ContactSnippetPlacement', 'contact_snippet'))
+# class ContactSnippetPhone(Orderable):
+#     page = ParentalKey('rca.ContactSnippet', related_name='contact_phone')
+#     phone_number = models.CharField(max_length=255, help_text=help_text('rca.ContactSnippetPhone', 'phone_number'))
+#
+#     panels = [
+#         FieldPanel('phone_number')
+#     ]
+#
+# class ContactSnippetEmail(Orderable):
+#     page = ParentalKey('rca.ContactSnippet', related_name='contact_email')
+#     email_address = models.CharField(max_length=255, help_text=help_text('rca.ContactSnippetEmail', 'email_address'))
+#
+#     panels = [
+#         FieldPanel('email_address')
+#     ]
+#
+# class ContactSnippet(models.Model):
+#     title = models.CharField(max_length=255, help_text=help_text('rca.ContactSnippet', 'title', default="This is the reference name for the contact. This is not displayed on the frontend."))
+#     contact_title = models.CharField(max_length=255, blank=True, help_text=help_text('rca.ContactSnippet', 'contact_title', default="This is the optional title, displayed on the frontend"))
+#     contact_address = models.TextField(blank=True, help_text=help_text('rca.ContactSnippet', 'contact_address'))
+#     contact_link = models.URLField(blank=True, help_text=help_text('rca.ContactSnippet', 'contact_link'))
+#     contact_link_text = models.CharField(max_length=255, blank=True, help_text=help_text('rca.ContactSnippet', 'contact_link_text'))
+#
+#     def __unicode__(self):
+#         return self.title
+#
+# ContactSnippet.panels = [
+#     FieldPanel('title'),
+#     FieldPanel('contact_title'),
+#     FieldPanel('contact_address'),
+#     FieldPanel('contact_link'),
+#     FieldPanel('contact_link_text'),
+#     InlinePanel('contact_email', label="Contact phone numbers/emails"),
+#     InlinePanel('contact_phone', label="Contact phone number"),
+# ]
+#
+#
+# register_snippet(ContactSnippet)
+#
+# class ContactSnippetPlacement(models.Model):
+#     page = ParentalKey(Page, related_name='contact_snippet_placements')
+#     contact_snippet = models.ForeignKey('rca.ContactSnippet', related_name='+', help_text=help_text('rca.ContactSnippetPlacement', 'contact_snippet'))
 
 # == School page ==
 
@@ -2389,21 +2465,21 @@ class StandardIndexAd(Orderable):
         SnippetChooserPanel('ad', Advert),
     ]
 
-class StandardIndexCustomContentModules(Orderable):
-    page = ParentalKey('rca.StandardIndex', related_name='custom_content_modules')
-    custom_content_module = models.ForeignKey('rca.CustomContentModule', related_name='+', help_text=help_text('rca.StandardIndexCustomContentModules', 'custom_content_module'))
-
-    panels = [
-        SnippetChooserPanel('custom_content_module', CustomContentModule),
-    ]
-
-class StandardIndexContactSnippet(Orderable):
-    page = ParentalKey('rca.StandardIndex', related_name='contact_snippets')
-    contact_snippet = models.ForeignKey('rca.ContactSnippet', related_name='+', help_text=help_text('rca.StandardIndexContactSnippet', 'contact_snippet'))
-
-    panels = [
-        SnippetChooserPanel('contact_snippet', ContactSnippet),
-    ]
+# class StandardIndexCustomContentModules(Orderable):
+#     page = ParentalKey('rca.StandardIndex', related_name='custom_content_modules')
+#     custom_content_module = models.ForeignKey('rca.CustomContentModule', related_name='+', help_text=help_text('rca.StandardIndexCustomContentModules', 'custom_content_module'))
+#
+#     panels = [
+#         SnippetChooserPanel('custom_content_module', CustomContentModule),
+#     ]
+#
+# class StandardIndexContactSnippet(Orderable):
+#     page = ParentalKey('rca.StandardIndex', related_name='contact_snippets')
+#     contact_snippet = models.ForeignKey('rca.ContactSnippet', related_name='+', help_text=help_text('rca.StandardIndexContactSnippet', 'contact_snippet'))
+#
+#     panels = [
+#         SnippetChooserPanel('contact_snippet', ContactSnippet),
+#     ]
 
 class StandardIndex(Page, SocialFields, OptionalBlockFields, SidebarBehaviourFields):
     intro = RichTextField(help_text=help_text('rca.StandardIndex', 'intro'), blank=True)
@@ -4391,6 +4467,7 @@ class RcaBlogPageArea(models.Model):
 
 class RcaBlogPage(Page, SocialFields):
     body = RichTextField(help_text=help_text('rca.RcaBlogPage', 'body'))
+    streamfield = StreamField(StoryBlock(), blank=True)
     author = models.CharField(max_length=255, blank=True, help_text=help_text('rca.RcaBlogPage', 'author'))
     date = models.DateField("Creation date", help_text=help_text('rca.RcaBlogPage', 'date'))
     programme = models.CharField(max_length=255, choices=PROGRAMME_CHOICES, blank=True, help_text=help_text('rca.RcaBlogPage', 'programme'))
@@ -4440,6 +4517,7 @@ RcaBlogPage.content_panels = [
     InlinePanel('carousel_items', label="Carousel content"),
     FieldPanel('title', classname="full title"),
     FieldPanel('body', classname="full"),
+    StreamFieldPanel('streamfield'),
     FieldPanel('author'),
     FieldPanel('date'),
     FieldPanel('school'),

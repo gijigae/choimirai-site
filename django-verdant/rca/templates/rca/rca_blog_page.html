@@ -6,7 +6,9 @@
 {% block content %}
     {% include "rca/includes/modules/carousel.html" %}
     <section class="row">
-        {% include "rca/includes/modules/body-text.html" with showTitle="true" body=self.body%}
+        <h1 class="h5">{{ self.title }}</h1>
+{#        {% include "rca/includes/modules/body-text.html" with showTitle="true" body=self.body%}#}
+        {% include "rca/includes/streamfield.html" %}
 
         {# Meta data #}
         <section class="four">
