@@ -229,16 +229,16 @@ LOGGING = {
     }
 }
 
-CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': '127.0.0.1:6379:1',
-        'KEY_PREFIX': 'rca',
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-        }
-    }
-}
+# CACHES = {
+#     'default': {
+#         'BACKEND': 'django_redis.cache.RedisCache',
+#         'LOCATION': '127.0.0.1:6379:1',
+#         'KEY_PREFIX': 'rca',
+#         'OPTIONS': {
+#             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+#         }
+#     }
+# }
 
 # WAGTAIL SETTINGS
 
@@ -247,12 +247,12 @@ WAGTAIL_SITE_NAME = 'RCA'
 # Override the Image class used by wagtailimages with a custom one
 WAGTAILIMAGES_IMAGE_MODEL = 'rca.RcaImage'
 
-WAGTAILSEARCH_BACKENDS = {
-    'default': {
-        'BACKEND': 'wagtail.wagtailsearch.backends.elasticsearch.ElasticSearch',
-        'INDEX': 'verdant',
-    },
-}
+# WAGTAILSEARCH_BACKENDS = {
+#     'default': {
+#         'BACKEND': 'wagtail.wagtailsearch.backends.elasticsearch.ElasticSearch',
+#         'INDEX': 'verdant',
+#     },
+# }
 
 # Hide password management / recovery options, as RCA uses LDAP instead
 WAGTAIL_PASSWORD_MANAGEMENT_ENABLED = False
